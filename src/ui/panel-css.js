@@ -1381,6 +1381,47 @@ function injectPanelCSS() {
   border-color: color-mix(in srgb, var(--ds-accent) 45%, transparent);
   background: var(--ds-accent-soft);
 }
+
+.ds-audit-row {
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--ds-border);
+}
+
+.ds-audit-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ds-audit-tool {
+  color: var(--ds-text);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.ds-audit-meta {
+  margin-left: auto;
+  color: var(--ds-text-faint);
+  font-size: 10px;
+}
+
+.ds-audit-args {
+  margin-top: 5px;
+  overflow: hidden;
+  color: var(--ds-text-muted);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 10px;
+  line-height: 1.45;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ds-audit-error {
+  margin-top: 4px;
+  color: var(--ds-error);
+  font-size: 10px;
+  line-height: 1.45;
+}
 `;
   s.textContent = css;
   document.head.appendChild(s);

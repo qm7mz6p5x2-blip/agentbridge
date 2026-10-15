@@ -8,7 +8,7 @@ const path = require('path');
 const os = require('os');
 
 const PORT = parseInt(process.env.DTA_PORT, 10) || 3004;
-const ENGINE_VERSION = '0.1.0';
+const ENGINE_VERSION = '0.2.0';
 const SERVER_DIR = path.resolve(__dirname);
 
 const WORKSPACE_DIR = path.resolve(__dirname, '..', 'workspace');

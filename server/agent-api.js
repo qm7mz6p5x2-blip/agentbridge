@@ -16,7 +16,7 @@ const {
 const { readJsonFile, writeJsonFile, withFileLock } = require('./fs-utils');
 
 function createAgentApi(deps) {
-  const { toolRegistry, pluginRegistry, skills, crossPlatform, piMemory } = deps;
+  const { toolRegistry, pluginRegistry, skills, crossPlatform, piMemory, permissionPolicy } = deps;
 
   return {
 
@@ -112,12 +112,25 @@ function createAgentApi(deps) {
     },
 
     async tools_list() {
-      try { return { success: true, tools: await readJsonFile(TOOLS_CONFIG, DEFAULT_TOOLS) }; }
-      catch (e) { return { success: true, tools: DEFAULT_TOOLS }; }
+      try {
+        var tools = await readJsonFile(TOOLS_CONFIG, DEFAULT_TOOLS);
+        if (permissionPolicy) {
+          tools = tools.map(function (tool) {
+            return {
+              ...tool,
+              mode: permissionPolicy.config.tools[tool.name] || permissionPolicy.config.defaultMode
+            };
+          });
+        }
+        return { success: true, tools: tools };
+      } catch (e) { return { success: true, tools: DEFAULT_TOOLS }; }
     },
 
     async tools_set_mode(name, mode) {
       if (['off', 'manual', 'auto'].indexOf(mode) === -1) throw new Error('mode 必须是 off, manual 或 auto');
+      if (permissionPolicy) {
+        await permissionPolicy.setToolMode(name, mode);
+      }
       // 【修复】加锁串行化读改写，避免并发修改丢失
       return withFileLock(TOOLS_CONFIG, async function() {
         var tools = DEFAULT_TOOLS;

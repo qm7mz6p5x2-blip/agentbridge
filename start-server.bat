@@ -2,7 +2,7 @@
 chcp 65001 >nul
 title AgentBridge - 工具服务器
 echo ============================================
-echo   AgentBridge v0.1.0
+echo   AgentBridge v0.2.0
 echo   启动本地工具服务器...
 echo ============================================
 echo.

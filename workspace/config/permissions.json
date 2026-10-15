@@ -1,0 +1,11 @@
+{
+  "enforce": true,
+  "defaultMode": "auto",
+  "tools": {
+    "write_file": "manual",
+    "append_file": "manual",
+    "plugin_install": "manual",
+    "plugin_install_url": "manual",
+    "plugin_uninstall": "manual"
+  }
+}

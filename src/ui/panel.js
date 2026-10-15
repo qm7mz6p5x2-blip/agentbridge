@@ -6,7 +6,7 @@
 // NOTE: agentTools/agentSkills/executionHistory 在 state.js 中声明
 // ============================================================
 
-var PANEL_VERSION = '0.1.0';
+var PANEL_VERSION = '0.2.0';
 
 var agentPersonality = null;
 var agentCustomSkills = [];
@@ -142,6 +142,7 @@ function buildPanelHTML() {
     '  <button class="ds-pill" data-view="skills">\u{1F9E0} 技能 <span class="ds-pill-count" id="__ds-pill-count-skills">0</span></button>',
     '  <button class="ds-pill" data-view="files">\u{1F4C1} 文件</button>',
     '  <button class="ds-pill" data-view="logs">\u{1F4E1} 日志 <span class="ds-pill-count" id="__ds-pill-count-logs">0</span></button>',
+    '  <button class="ds-pill" data-view="audit">\u{1F4CB} 审计 <span class="ds-pill-count" id="__ds-pill-count-audit">0</span></button>',
     '</div>',
 
     // ── Body：分组结果 ─────────────────────────────────
@@ -215,6 +216,18 @@ function buildPanelHTML() {
     '      <span id="__ds-progress-indicator"></span>',
     '      <div class="ds-log-scroll-btn active" id="__ds-btn-autoscroll">&#8964; auto-scroll</div>',
     '    </div>',
+    '  </div>',
+
+    // 审计视图
+    '  <div class="ds-view" id="__ds-view-audit">',
+    '    <div class="ds-log-toolbar">',
+    '      <span class="ds-log-toolbar-hint" id="__ds-audit-summary"></span>',
+    '      <div style="display:flex;gap:6px;">',
+    '        <button class="ds-log-tb-btn" id="__ds-btn-audit-refresh">刷新</button>',
+    '        <button class="ds-log-tb-btn" id="__ds-btn-audit-clear">清空</button>',
+    '      </div>',
+    '    </div>',
+    '    <div id="__ds-audit-list"><div class="ds-empty-state"><span class="ds-empty-icon">&#128203;</span><div class="ds-empty-text">暂无审计记录</div><div class="ds-empty-hint">工具执行后会自动记录脱敏摘要</div></div></div>',
     '  </div>',
 
     '</div>',
@@ -355,6 +368,19 @@ function bindPanelEvents() {
   var moreBtn = document.getElementById('__ds-btn-log-more');
   if (moreBtn) moreBtn.onclick = openRawLogs;
 
+  var auditRefresh = document.getElementById('__ds-btn-audit-refresh');
+  if (auditRefresh) auditRefresh.onclick = function() { renderAuditView(); };
+  var auditClear = document.getElementById('__ds-btn-audit-clear');
+  if (auditClear) auditClear.onclick = async function() {
+    try {
+      await apiJson('/api/audit', { action: 'clear' });
+      renderAuditView();
+      logPanel('info', '审计日志已清空');
+    } catch(e) {
+      logPanel('error', '清空审计日志失败: ' + e.message);
+    }
+  };
+
   // 自动滚动
   var asBtn = document.getElementById('__ds-btn-autoscroll');
   if (asBtn) asBtn.onclick = function() {
@@ -443,7 +469,8 @@ function activeViewRowSelector() {
     quick: '.ds-action-row',
     skills: '.ds-skill-row',
     files: '.__ds-file-item',
-    logs: '.ds-log-entry'
+    logs: '.ds-log-entry',
+    audit: '.ds-audit-row'
   };
   return map[currentView] || null;
 }
@@ -549,6 +576,7 @@ function switchView(view) {
   }
   if (view === 'files') { try { if (window.loadFileBrowser) window.loadFileBrowser(); } catch(e) {} }
   if (view === 'logs') renderLogs();
+  else if (view === 'audit') renderAuditView();
   if (view === 'quick') updateQuickActionButtons(window.__ds_quickActions || []);
   if (view === 'tools') renderToolCardsFiltered(searchQuery);
   if (view === 'skills') {
@@ -1109,6 +1137,53 @@ function renderLogs() {
 
   updateLogFooter(recent);
   if (autoScroll) scrollToLogBottom();
+}
+
+async function renderAuditView() {
+  var list = document.getElementById('__ds-audit-list');
+  var summary = document.getElementById('__ds-audit-summary');
+  if (!list || !summary) return;
+  summary.textContent = '加载中...';
+  try {
+    var data = await apiGetJson('/api/audit?limit=50');
+    var stats = data.stats || {};
+    var entries = data.entries || [];
+    summary.textContent = '总计 ' + (stats.total || 0) +
+      ' | 成功 ' + (stats.success || 0) +
+      ' | 失败 ' + (stats.failure || 0) +
+      ' | 平均 ' + (stats.averageDurationMs || 0) + 'ms';
+    updatePillCount('audit', stats.total || 0);
+
+    if (entries.length === 0) {
+      list.innerHTML = buildEmptyStateHTML(
+        '暂无审计记录',
+        '工具执行后会自动记录脱敏摘要',
+        '\u{1F4CB}'
+      );
+      return;
+    }
+
+    var html = '';
+    for (var i = 0; i < entries.length; i++) {
+      var entry = entries[i];
+      var cls = entry.success ? 'success' : 'error';
+      var label = entry.success ? 'success' : 'failed';
+      var argsText = JSON.stringify(entry.args || {});
+      html += '<div class="ds-audit-row">';
+      html += '<div class="ds-audit-main">';
+      html += '<span class="ds-log-badge ds-badge-' + cls + '">' + label + '</span>';
+      html += '<span class="ds-audit-tool">' + escapeAttr(entry.tool || '-') + '</span>';
+      html += '<span class="ds-audit-meta">' + escapeAttr(entry.mode || '-') + ' · ' + Number(entry.durationMs || 0) + 'ms</span>';
+      html += '</div>';
+      html += '<div class="ds-audit-args" title="' + escapeAttr(argsText) + '">' + escapeAttr(argsText) + '</div>';
+      if (entry.error) html += '<div class="ds-audit-error">' + escapeAttr(entry.error) + '</div>';
+      html += '</div>';
+    }
+    list.innerHTML = html;
+  } catch(e) {
+    summary.textContent = '加载失败';
+    list.innerHTML = buildEmptyStateHTML('审计日志加载失败', e.message, '\u26A0');
+  }
 }
 
 // 更新日志页签计数（All/Info/Warn/Error）

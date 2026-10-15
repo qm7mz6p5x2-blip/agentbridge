@@ -47,11 +47,15 @@ const { registerSkillManagerTools } = require('./skill-tools');
 const { createAgentApi } = require('./agent-api');
 const { registerPluginManagerTools } = require('./plugin-tools');
 const { handleFeishuMessages, handleFeishuReply } = require('./feishu');
+const { createAuditLog } = require('./audit-log');
+const { createPermissionPolicy } = require('./permission-policy');
 
 // ============================================================
 // 全局实例
 // ============================================================
 const toolRegistry = new ToolRegistry(WORKSPACE_DIR);
+const auditLog = createAuditLog(WORKSPACE_DIR);
+const permissionPolicy = createPermissionPolicy(path.join(CONFIG_DIR, 'permissions.json'));
 const pluginRegistry = new PluginRegistry(toolRegistry, {
   workspaceDir: WORKSPACE_DIR,
   engineVersion: ENGINE_VERSION,
@@ -133,7 +137,7 @@ async function loadPlugins() {
 // Agent API（业务模块装配）
 // ============================================================
 const AGENT_API = createAgentApi({
-  toolRegistry, pluginRegistry, skills, crossPlatform, piMemory
+  toolRegistry, pluginRegistry, skills, crossPlatform, piMemory, permissionPolicy
 });
 
 // ============================================================
@@ -306,6 +310,46 @@ var server = http.createServer(async function(req, res) {
           result = await handleConfig(body);
           break;
 
+        case '/api/audit':
+          if (req.method === 'GET') {
+            result = {
+              success: true,
+              entries: await auditLog.list({
+                limit: body.limit,
+                tool: body.tool,
+                success: body.success === undefined ? undefined : body.success === 'true'
+              }),
+              stats: await auditLog.stats()
+            };
+          } else if (body.action === 'clear') {
+            await auditLog.clear();
+            result = { success: true, message: '审计日志已清空' };
+          } else {
+            result = { success: false, error: '未知操作: ' + (body.action || '(空)') };
+          }
+          break;
+
+        case '/api/audit/stats':
+          result = { success: true, stats: await auditLog.stats() };
+          break;
+
+        case '/api/permissions':
+          if (req.method === 'GET') {
+            result = {
+              success: true,
+              permissions: permissionPolicy.toJSON(),
+              tools: toolRegistry.listTools().map(function (tool) {
+                return {
+                  name: tool.name,
+                  mode: permissionPolicy.config.tools[tool.name] || permissionPolicy.config.defaultMode
+                };
+              })
+            };
+          } else {
+            result = await handlePermissionUpdate(body);
+          }
+          break;
+
         case '/api/agent/personality':
           if (req.method === 'GET') result = await AGENT_API.personality_get();
           else if (body.action === 'save') result = await AGENT_API.personality_save(body.personality);
@@ -421,11 +465,36 @@ var server = http.createServer(async function(req, res) {
 async function executeToolHttp(toolName, args, opts) {
   opts = opts || {};
   args = args || {};
+  const startedAt = Date.now();
   await appendLog('EXEC', '调用工具: ' + toolName, { args: args, mode: opts.mode || 'auto' });
+
+  const permission = permissionPolicy.evaluate(toolName, opts.mode, {
+    confirmed: opts.confirmed === true
+  });
+  if (!permission.allowed) {
+    const blockedResult = {
+      success: true,
+      blocked: true,
+      needsConfirmation: permission.needsConfirmation,
+      reason: permission.reason,
+      tool: toolName,
+      mode: permission.mode
+    };
+    await auditLog.append({
+      tool: toolName,
+      args: args,
+      mode: permission.mode,
+      success: false,
+      durationMs: Date.now() - startedAt,
+      error: permission.reason
+    });
+    return blockedResult;
+  }
+
   try {
     var toolResult = await toolRegistry.executeTool(toolName, args, {
       toolCallId: opts.toolCallId,
-      mode: opts.mode || 'auto',
+      mode: permission.mode,
       _fromHttp: true
     });
     var result = unwrapToolResult(toolResult);
@@ -434,10 +503,26 @@ async function executeToolHttp(toolName, args, opts) {
       result.success = !result.error && !result.blocked;
     }
     await appendLog('EXEC', '工具完成: ' + toolName, { success: !!(result && result.success !== false) });
+    await auditLog.append({
+      tool: toolName,
+      args: args,
+      mode: permission.mode,
+      success: result && result.success !== false && !result.blocked,
+      durationMs: Date.now() - startedAt,
+      error: result && result.error ? result.error : ''
+    });
     return result;
   } catch (execErr) {
     var errResult = { success: false, error: execErr.message || String(execErr) };
     await appendLog('ERROR', '工具执行失败: ' + toolName + ' — ' + errResult.error);
+    await auditLog.append({
+      tool: toolName,
+      args: args,
+      mode: permission.mode,
+      success: false,
+      durationMs: Date.now() - startedAt,
+      error: errResult.error
+    });
     return errResult;
   }
 }
@@ -483,6 +568,26 @@ async function handleConfig(body) {
     return { success: true, globalPermissions: false };
   }
   return { success: false, error: '未知操作' };
+}
+
+async function handlePermissionUpdate(body) {
+  try {
+    if (body.tool) {
+      const mode = await permissionPolicy.setToolMode(body.tool, body.mode);
+      return { success: true, tool: body.tool, mode: mode };
+    }
+    if (body.defaultMode) {
+      const mode = await permissionPolicy.setDefaultMode(body.defaultMode);
+      return { success: true, defaultMode: mode };
+    }
+    if (typeof body.enforce === 'boolean') {
+      const enforce = await permissionPolicy.setEnforce(body.enforce);
+      return { success: true, enforce: enforce };
+    }
+    return { success: false, error: '缺少 tool、defaultMode 或 enforce 参数' };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
 }
 
 // 【修复】请求体最大 10MB，防止内存耗尽攻击
@@ -532,6 +637,7 @@ function parseQuery(req) {
 // 启动
 // ============================================================
 ensureDirectories().then(async function() {
+  await permissionPolicy.load();
   await loadPlugins();
   registerPluginManagerTools(toolRegistry, pluginRegistry, { pluginsDir: PLUGINS_DIR });
   registerSkillManagerTools(toolRegistry, skills);
@@ -559,10 +665,12 @@ ensureDirectories().then(async function() {
     console.log('  Plugins:   ' + pluginRegistry.plugins.length + ' loaded');
     console.log('  Skills:    SKILL.md');
     console.log('');
-    console.log('  API v0.1.1:  /exec (统一工具执行端点)');
+    console.log('  API v' + ENGINE_VERSION + ':  /exec (统一工具执行端点)');
     console.log('             /api/tool (ToolRegistry pipeline)');
     console.log('             /api/tools (list/execute)');
     console.log('             /api/plugins (list/reload)');
+    console.log('             /api/audit (execution history)');
+    console.log('             /api/permissions (tool permission policy)');
     console.log('             /api/read|write|list|exec|append|search|file-info (legacy compat)');
     console.log('             /api/agent/* (personality/memory/skills/tools/quick-actions)');
   });

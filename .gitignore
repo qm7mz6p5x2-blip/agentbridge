@@ -3,6 +3,7 @@ runtime/
 server/logs/
 workspace/memory/
 workspace/sessions/
+workspace/audit/
 screenshots/
 .env
 .env.*

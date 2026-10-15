@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.0
+
+- Add persistent tool execution audit logs.
+- Add backend permission policy with auto, manual, and off modes.
+- Add `/api/audit`, `/api/audit/stats`, and `/api/permissions` endpoints.
+- Add plugin SDK scaffolding command.
+- Add tests for audit logs, permission policy, and plugin scaffolding.
+- Move native messaging identity to `com.agentbridge.native`.
+- Add GitHub Actions syntax checks and tests.
+
 ## 0.1.0
 
 - 基于 AI Tool Agent v0.2.0 创建 AgentBridge 衍生版本。

@@ -15,6 +15,8 @@ AgentBridge 是一个面向网页版大模型的本地工具执行与 Agent 循�
 - 安全控制：路径检查、危险命令拦截、敏感操作确认和参数净化。
 - 插件扩展：扫描 `workspace/plugins` 并注册插件提供的工具。
 - 本地优先：默认运行在用户电脑上，不依赖云端执行环境。
+- 审计日志：记录工具、结果、耗时和脱敏参数，默认不保存文件正文和敏感字段。
+- 权限策略：支持 `auto`、`manual`、`off` 三种工具权限模式。
 
 ## 架构
 
@@ -113,6 +115,49 @@ AI 输出工具调用
 ```
 
 当前服务端注册 52 个工具，加载 8 个插件。
+
+## 审计与权限
+
+工具执行后会写入 `workspace/audit/tool-audit.jsonl`。日志包含：
+
+- 工具名称
+- 权限模式
+- 成功或失败
+- 执行耗时
+- 脱敏后的参数摘要
+- 错误信息
+
+相关接口：
+
+```text
+GET  /api/audit
+GET  /api/audit/stats
+POST /api/audit         { "action": "clear" }
+GET  /api/permissions
+POST /api/permissions   { "tool": "read_file", "mode": "manual" }
+POST /api/permissions   { "defaultMode": "manual" }
+POST /api/permissions   { "enforce": false }
+```
+
+默认策略下，写入文件和插件安装需要用户确认；读取和目录查询默认自动执行。策略文件位于 `workspace/config/permissions.json`。
+
+## 创建插件
+
+使用插件 SDK 生成一个可加载的最小插件：
+
+```powershell
+npm run plugin:create -- sample-plugin --name "Sample Plugin" --tool sample_hello
+```
+
+命令会在 `workspace/plugins/sample-plugin/` 下生成：
+
+```text
+plugin.json
+index.js
+README.md
+```
+
+随后重启服务或在扩展中调用 `plugin_reload`，插件工具即可注册到 ToolRegistry。
 
 ## 项目结构
 

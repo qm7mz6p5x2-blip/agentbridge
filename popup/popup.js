@@ -1,4 +1,4 @@
-var APP_VERSION = 'v0.1.0';
+var APP_VERSION = 'v0.2.0';
 
 function $(id) { return document.getElementById(id); }
 
