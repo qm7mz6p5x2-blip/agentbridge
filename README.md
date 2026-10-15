@@ -173,6 +173,8 @@ workspace/plugins/          插件目录
 workspace/skills/           技能目录
 ```
 
+更完整的组件、权限和调用链说明见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。
+
 ## 安全说明
 
 AgentBridge 可以执行本地文件和命令操作。请只在了解风险的情况下授权工具调用，并保持工作区权限最小化。
