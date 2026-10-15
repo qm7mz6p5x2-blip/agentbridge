@@ -6,5 +6,10 @@
   "entry": "index.js",
   "requiredEngineVersion": "^0.1.0",
   "tools": ["study_flashcard", "study_quiz", "study_note_format", "study_gpa_calc", "study_pomodoro"],
-  "kind": "utility"
+  "kind": "utility",
+  "permissions": {
+    "filesystem": true,
+    "network": false,
+    "child_process": false
+  }
 }

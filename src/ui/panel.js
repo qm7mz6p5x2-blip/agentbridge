@@ -224,8 +224,14 @@ function buildPanelHTML() {
     '      <span class="ds-log-toolbar-hint" id="__ds-audit-summary"></span>',
     '      <div style="display:flex;gap:6px;">',
     '        <button class="ds-log-tb-btn" id="__ds-btn-audit-refresh">刷新</button>',
+    '        <button class="ds-log-tb-btn" id="__ds-btn-audit-export">导出</button>',
     '        <button class="ds-log-tb-btn" id="__ds-btn-audit-clear">清空</button>',
     '      </div>',
+    '    </div>',
+    '    <div class="ds-log-toolbar">',
+    '      <input class="ds-audit-filter" id="__ds-audit-tool-filter" placeholder="工具名" />',
+    '      <select class="ds-audit-filter" id="__ds-audit-status-filter"><option value="">全部状态</option><option value="true">成功</option><option value="false">失败</option></select>',
+    '      <input class="ds-audit-filter" id="__ds-audit-query-filter" placeholder="关键词" />',
     '    </div>',
     '    <div id="__ds-audit-list"><div class="ds-empty-state"><span class="ds-empty-icon">&#128203;</span><div class="ds-empty-text">暂无审计记录</div><div class="ds-empty-hint">工具执行后会自动记录脱敏摘要</div></div></div>',
     '  </div>',
@@ -370,6 +376,8 @@ function bindPanelEvents() {
 
   var auditRefresh = document.getElementById('__ds-btn-audit-refresh');
   if (auditRefresh) auditRefresh.onclick = function() { renderAuditView(); };
+  var auditExport = document.getElementById('__ds-btn-audit-export');
+  if (auditExport) auditExport.onclick = function() { exportAuditLog(); };
   var auditClear = document.getElementById('__ds-btn-audit-clear');
   if (auditClear) auditClear.onclick = async function() {
     try {
@@ -380,6 +388,15 @@ function bindPanelEvents() {
       logPanel('error', '清空审计日志失败: ' + e.message);
     }
   };
+  ['__ds-audit-tool-filter', '__ds-audit-status-filter', '__ds-audit-query-filter'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('change', function() { renderAuditView(); });
+      el.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') renderAuditView();
+      });
+    }
+  });
 
   // 自动滚动
   var asBtn = document.getElementById('__ds-btn-autoscroll');
@@ -1145,13 +1162,15 @@ async function renderAuditView() {
   if (!list || !summary) return;
   summary.textContent = '加载中...';
   try {
-    var data = await apiGetJson('/api/audit?limit=50');
+    var data = await apiGetJson('/api/audit?' + buildAuditQuery({ limit: 50 }));
+    var approvalData = await apiGetJson('/api/approvals?status=pending&limit=1');
     var stats = data.stats || {};
     var entries = data.entries || [];
     summary.textContent = '总计 ' + (stats.total || 0) +
       ' | 成功 ' + (stats.success || 0) +
       ' | 失败 ' + (stats.failure || 0) +
-      ' | 平均 ' + (stats.averageDurationMs || 0) + 'ms';
+      ' | 平均 ' + (stats.averageDurationMs || 0) + 'ms' +
+      ' | 待审批 ' + (((approvalData || {}).stats || {}).pending || 0);
     updatePillCount('audit', stats.total || 0);
 
     if (entries.length === 0) {
@@ -1183,6 +1202,38 @@ async function renderAuditView() {
   } catch(e) {
     summary.textContent = '加载失败';
     list.innerHTML = buildEmptyStateHTML('审计日志加载失败', e.message, '\u26A0');
+  }
+}
+
+function buildAuditQuery(extra) {
+  var params = new URLSearchParams();
+  var toolEl = document.getElementById('__ds-audit-tool-filter');
+  var statusEl = document.getElementById('__ds-audit-status-filter');
+  var queryEl = document.getElementById('__ds-audit-query-filter');
+  if (toolEl && toolEl.value.trim()) params.set('tool', toolEl.value.trim());
+  if (statusEl && statusEl.value) params.set('success', statusEl.value);
+  if (queryEl && queryEl.value.trim()) params.set('query', queryEl.value.trim());
+  if (extra) {
+    for (var key in extra) {
+      if (Object.prototype.hasOwnProperty.call(extra, key)) params.set(key, extra[key]);
+    }
+  }
+  return params.toString();
+}
+
+async function exportAuditLog() {
+  try {
+    var data = await apiGetJson('/api/audit?' + buildAuditQuery({ format: 'csv' }));
+    var exported = data.export || {};
+    var blob = new Blob([exported.content || ''], { type: 'text/csv;charset=utf-8' });
+    var link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'agentbridge-audit.csv';
+    link.click();
+    setTimeout(function() { URL.revokeObjectURL(link.href); }, 1000);
+    logPanel('success', '审计日志已导出 (' + (exported.count || 0) + ' 条)');
+  } catch(e) {
+    logPanel('error', '导出审计日志失败: ' + e.message);
   }
 }
 

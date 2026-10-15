@@ -6,5 +6,10 @@
   "entry": "index.js",
   "requiredEngineVersion": "^0.1.0",
   "tools": ["memory_save", "memory_search", "memory_recall", "memory_forget", "memory_stats"],
-  "kind": "memory"
+  "kind": "memory",
+  "permissions": {
+    "filesystem": true,
+    "network": false,
+    "child_process": false
+  }
 }

@@ -1,0 +1,15 @@
+{
+  "id": "web-integration",
+  "name": "Web Integration",
+  "version": "1.0.0",
+  "description": "网页抓取和 Webhook 工具",
+  "entry": "index.js",
+  "requiredEngineVersion": "^0.1.0",
+  "tools": ["web_fetch", "webhook_send"],
+  "kind": "tool",
+  "permissions": {
+    "filesystem": false,
+    "network": true,
+    "child_process": false
+  }
+}

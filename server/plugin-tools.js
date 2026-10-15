@@ -34,6 +34,7 @@ function registerPluginManagerTools(toolRegistry, pluginRegistry, deps) {
               version: p.version,
               kind: p.kind,
               origin: p.origin,
+              permissions: p.permissions || null,
               loaded: p.loaded,
               tools: tools
             };

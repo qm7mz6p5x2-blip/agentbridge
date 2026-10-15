@@ -45,6 +45,8 @@ class AuditLog {
       timestamp: new Date().toISOString(),
       tool: entry.tool || "unknown",
       mode: entry.mode || "auto",
+      approvalId: entry.approvalId || "",
+      sessionId: entry.sessionId || "",
       success: entry.success !== false,
       durationMs: Number(entry.durationMs || 0),
       error: entry.error ? String(entry.error).slice(0, 1000) : "",
@@ -83,8 +85,43 @@ class AuditLog {
     if (typeof options.success === "boolean") {
       records = records.filter((item) => item.success === options.success);
     }
+    if (options.from) {
+      const fromTime = new Date(options.from).getTime();
+      if (!Number.isNaN(fromTime)) {
+        records = records.filter((item) => new Date(item.timestamp).getTime() >= fromTime);
+      }
+    }
+    if (options.to) {
+      const toTime = new Date(options.to).getTime();
+      if (!Number.isNaN(toTime)) {
+        records = records.filter((item) => new Date(item.timestamp).getTime() <= toTime);
+      }
+    }
+    if (options.query) {
+      const query = String(options.query).toLowerCase();
+      records = records.filter((item) => JSON.stringify(item).toLowerCase().includes(query));
+    }
 
     return records.slice(-limit).reverse();
+  }
+
+  async export(format) {
+    const records = await this.list({ limit: 1000 });
+    const normalized = format === "csv" ? "csv" : "json";
+    if (normalized === "json") {
+      return { format: normalized, count: records.length, content: JSON.stringify(records, null, 2) };
+    }
+
+    const headers = ["timestamp", "tool", "mode", "success", "durationMs", "approvalId", "error", "args"];
+    const rows = [headers.join(",")];
+    for (const record of records.reverse()) {
+      const values = headers.map((key) => {
+        const value = key === "args" ? JSON.stringify(record[key] || {}) : record[key];
+        return csvEscape(value);
+      });
+      rows.push(values.join(","));
+    }
+    return { format: normalized, count: records.length, content: rows.join("\n") + "\n" };
   }
 
   async stats() {
@@ -135,8 +172,14 @@ function createAuditLog(workspaceDir, options) {
   return new AuditLog(workspaceDir, options);
 }
 
+function csvEscape(value) {
+  const text = value === null || value === undefined ? "" : String(value);
+  return '"' + text.replace(/"/g, '""') + '"';
+}
+
 module.exports = {
   AuditLog,
   createAuditLog,
   sanitizeArgs,
+  csvEscape,
 };

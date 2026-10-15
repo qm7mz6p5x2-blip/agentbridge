@@ -17,6 +17,8 @@ AgentBridge 是一个面向网页版大模型的本地工具执行与 Agent 循�
 - 本地优先：默认运行在用户电脑上，不依赖云端执行环境。
 - 审计日志：记录工具、结果、耗时和脱敏参数，默认不保存文件正文和敏感字段。
 - 权限策略：支持 `auto`、`manual`、`off` 三种工具权限模式。
+- 人工审批队列：手动模式会生成待审批请求，可允许一次、始终允许或拒绝。
+- 插件权限清单：插件必须声明文件、网络和子进程能力。
 
 ## 架构
 
@@ -133,6 +135,9 @@ AI 输出工具调用
 GET  /api/audit
 GET  /api/audit/stats
 POST /api/audit         { "action": "clear" }
+GET  /api/approvals?status=pending
+POST /api/approvals     { "id": "...", "action": "approve", "remember": false }
+POST /api/approvals     { "id": "...", "action": "deny", "reason": "用户拒绝" }
 GET  /api/permissions
 POST /api/permissions   { "tool": "read_file", "mode": "manual" }
 POST /api/permissions   { "defaultMode": "manual" }
@@ -158,6 +163,22 @@ README.md
 ```
 
 随后重启服务或在扩展中调用 `plugin_reload`，插件工具即可注册到 ToolRegistry。
+
+插件清单需要声明权限：
+
+```json
+{
+  "permissions": {
+    "filesystem": true,
+    "network": false,
+    "child_process": false
+  }
+}
+```
+
+未声明 `network` 的插件无法加载 `http` 或 `https`；未声明
+`child_process` 的插件无法执行子进程。文件系统访问仍然受 workspace
+沙箱限制。
 
 ## 项目结构
 

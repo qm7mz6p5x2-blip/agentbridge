@@ -1422,6 +1422,24 @@ function injectPanelCSS() {
   font-size: 10px;
   line-height: 1.45;
 }
+
+.ds-audit-filter {
+  min-width: 0;
+  flex: 1;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--ds-border);
+  border-radius: 6px;
+  outline: none;
+  color: var(--ds-text);
+  background: var(--ds-inset);
+  font-family: inherit;
+  font-size: 10px;
+}
+
+.ds-audit-filter:focus {
+  border-color: var(--ds-accent);
+}
 `;
   s.textContent = css;
   document.head.appendChild(s);

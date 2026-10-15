@@ -6,6 +6,9 @@
 - Add backend permission policy with auto, manual, and off modes.
 - Add `/api/audit`, `/api/audit/stats`, and `/api/permissions` endpoints.
 - Add plugin SDK scaffolding command.
+- Add plugin capability declarations for filesystem, network, and child processes.
+- Add a persistent approval queue for manual tool requests.
+- Add audit filtering and CSV export.
 - Add tests for audit logs, permission policy, and plugin scaffolding.
 - Add architecture documentation for the Model plus Harness design.
 - Move native messaging identity to `com.agentbridge.native`.

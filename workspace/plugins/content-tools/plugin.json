@@ -1,0 +1,15 @@
+{
+  "id": "content-tools",
+  "name": "Content Tools",
+  "version": "1.0.0",
+  "description": "自媒体内容模板与导出工具",
+  "entry": "index.js",
+  "requiredEngineVersion": "^0.1.0",
+  "tools": ["content_template", "platform_list", "content_export"],
+  "kind": "tool",
+  "permissions": {
+    "filesystem": true,
+    "network": false,
+    "child_process": false
+  }
+}

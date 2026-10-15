@@ -226,10 +226,12 @@ MONITOR.ui = {
         bodyHtml: bodyHtml,
         buttons: [
           { id: 'deny', label: '拒绝', cls: 'ds-btn-danger' },
-          { id: 'ok', label: '确认执行', cls: 'ds-btn-success' }
+          { id: 'ok', label: '允许一次', cls: 'ds-btn-success' },
+          { id: 'always', label: '始终允许', cls: 'ds-btn-success' }
         ],
         onAction: function(action) {
-          if (action === 'ok') done({ confirmed: true });
+          if (action === 'ok') done({ confirmed: true, remember: false });
+          else if (action === 'always') done({ confirmed: true, remember: true });
           else done({ confirmed: false }); // deny / close 均视为拒绝
         }
       });
@@ -581,13 +583,27 @@ MONITOR.coordinator = {
             if (typeof logPanel === 'function') {
               logPanel('info', '✓ 用户已确认，重新执行: ' + toolName);
             }
-            var confirmedResult = await executeConfirmedTool(toolName, args);
+            var confirmedResult = await executeConfirmedTool(
+              toolName,
+              args,
+              data.approvalId,
+              confirmResult.remember === true
+            );
             confirmedResult.tool = toolName;
             return confirmedResult;
           } else {
             // 用户拒绝
             if (typeof logPanel === 'function') {
               logPanel('warn', '✗ 用户拒绝确认: ' + toolName);
+            }
+            if (data.approvalId) {
+              try {
+                await fetch(getServerUrl() + '/api/approvals', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ id: data.approvalId, action: 'deny', reason: '用户拒绝确认' })
+                });
+              } catch (e) {}
             }
             return { success: false, error: '用户拒绝确认: ' + (data.reason || '敏感操作'), denied: true, tool: toolName };
           }

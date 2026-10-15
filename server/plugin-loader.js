@@ -13,6 +13,21 @@ const fss = require('fs');
 const path = require('path');
 var sandboxProxies = require('./sandbox-proxies');
 
+var DEFAULT_PLUGIN_PERMISSIONS = {
+  filesystem: true,
+  network: false,
+  child_process: false
+};
+
+function normalizePluginPermissions(raw) {
+  var input = raw && typeof raw === 'object' ? raw : {};
+  return {
+    filesystem: input.filesystem !== false,
+    network: input.network === true,
+    child_process: input.child_process === true
+  };
+}
+
 // ============================================================
 // 插件沙箱 — 限制插件可访问的 Node.js 模块
 // 防止恶意插件访问文件系统、网络、进程等敏厳能力
@@ -46,9 +61,10 @@ var PROXIED_MODULES = {
   }
 };
 
-function createPluginSandbox(pluginDir, pluginId, workspaceDir, extraRoots) {
+function createPluginSandbox(pluginDir, pluginId, workspaceDir, extraRoots, permissions) {
   workspaceDir = workspaceDir || pluginDir;
   extraRoots = extraRoots || [];
+  permissions = normalizePluginPermissions(permissions || DEFAULT_PLUGIN_PERMISSIONS);
 
   var sandboxRequire = function(moduleName) {
     // 解析相对路径 — 允许插件内部引用
@@ -63,6 +79,16 @@ function createPluginSandbox(pluginDir, pluginId, workspaceDir, extraRoots) {
 
     // 检查是否需要代理
     var baseModule = moduleName.split('/')[0];
+    if (baseModule === 'fs' && !permissions.filesystem) {
+      throw new Error('插件 ' + pluginId + ' 未声明 filesystem 权限');
+    }
+    if ((baseModule === 'http' || baseModule === 'https') && !permissions.network) {
+      throw new Error('插件 ' + pluginId + ' 未声明 network 权限');
+    }
+    if (baseModule === 'child_process' && !permissions.child_process) {
+      throw new Error('插件 ' + pluginId + ' 未声明 child_process 权限');
+    }
+
     if (PROXIED_MODULES[baseModule]) {
       return PROXIED_MODULES[baseModule](workspaceDir, pluginId, extraRoots);
     }
@@ -306,6 +332,9 @@ class PluginRegistry {
         origin: pluginDef.origin || 'config',
         source: pluginDef.source || '',
         manifest: pluginDef.manifest || null,
+        permissions: normalizePluginPermissions(
+          pluginDef.permissions || (pluginDef.manifest && pluginDef.manifest.permissions)
+        ),
         loaded: true
       });
 
@@ -428,7 +457,8 @@ class PluginRegistry {
           try {
             await fsp.access(entryPath);
             // 使用沙箱 require 加载插件，限制其可访问的模块
-            var sandbox = createPluginSandbox(pluginDir, manifest.id || entry.name, this._workspaceDir, this._extraFsRoots);
+            var permissions = normalizePluginPermissions(manifest.permissions || DEFAULT_PLUGIN_PERMISSIONS);
+            var sandbox = createPluginSandbox(pluginDir, manifest.id || entry.name, this._workspaceDir, this._extraFsRoots, permissions);
             var pluginModule = sandboxModule(entryPath, sandbox);
             // 如果模块导出的是函数, 包裹为 { definition: fn }
             const raw = typeof pluginModule === 'function' ? { definition: pluginModule } :
@@ -445,7 +475,8 @@ class PluginRegistry {
               manifest,
               origin,
               source: pluginDir,
-              rootDir: pluginDir
+              rootDir: pluginDir,
+              permissions: permissions
             });
             continue;
           } catch (e) {
@@ -464,7 +495,8 @@ class PluginRegistry {
         try {
           await fsp.access(indexPath);
           // 使用沙箱 require 加载插件，限制其可访问的模块
-          var sandbox2 = createPluginSandbox(pluginDir, entry.name, this._workspaceDir, this._extraFsRoots);
+          var defaultPermissions = normalizePluginPermissions(DEFAULT_PLUGIN_PERMISSIONS);
+          var sandbox2 = createPluginSandbox(pluginDir, entry.name, this._workspaceDir, this._extraFsRoots, defaultPermissions);
           const pluginModule = sandboxModule(indexPath, sandbox2);
           const pluginDef = typeof pluginModule === 'function' ? { register: pluginModule, definition: pluginModule } :
             (pluginModule.default ? { ...pluginModule.default, definition: pluginModule.default.register || pluginModule.default } : pluginModule);
@@ -479,7 +511,8 @@ class PluginRegistry {
             manifest: null,
             origin,
             source: pluginDir,
-            rootDir: pluginDir
+            rootDir: pluginDir,
+            permissions: defaultPermissions
           });
         } catch (e) {
           // 跳过
@@ -496,4 +529,12 @@ class PluginRegistry {
   }
 }
 
-module.exports = { PluginRegistry, isVersionCompatible, parseSemver, createPluginSandbox, sandboxModule };
+module.exports = {
+  PluginRegistry,
+  isVersionCompatible,
+  parseSemver,
+  createPluginSandbox,
+  sandboxModule,
+  normalizePluginPermissions,
+  DEFAULT_PLUGIN_PERMISSIONS
+};

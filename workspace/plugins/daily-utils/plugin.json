@@ -6,5 +6,10 @@
   "entry": "index.js",
   "requiredEngineVersion": "^0.1.0",
   "tools": ["daily_todo", "daily_countdown", "daily_schedule", "daily_text"],
-  "kind": "utility"
+  "kind": "utility",
+  "permissions": {
+    "filesystem": true,
+    "network": false,
+    "child_process": false
+  }
 }

@@ -22,6 +22,7 @@ Executor / Background
 AgentBridge Tool Server
   |
   +-- PermissionPolicy
+  +-- ApprovalQueue
   +-- AuditLog
   +-- ToolRegistry
   |     +-- built-in tools
@@ -76,6 +77,26 @@ list_dir(memory)
 
 默认策略位于 `workspace/config/permissions.json`。写入文件和插件安装默认需要确认。
 
+手动模式会创建待审批记录。用户可以允许一次、始终允许或拒绝。审批结果和工具
+执行结果都会写入审计日志。
+
+## 插件权限清单
+
+插件必须在 `plugin.json` 中声明能力：
+
+```json
+{
+  "permissions": {
+    "filesystem": true,
+    "network": false,
+    "child_process": false
+  }
+}
+```
+
+加载器会在 `require()` 阶段检查权限。未声明的网络或子进程模块不能加载，
+文件系统访问继续受 workspace 路径限制。
+
 ## 审计日志
 
 审计日志位于：
@@ -96,6 +117,8 @@ workspace/audit/tool-audit.jsonl
 GET  /api/audit
 GET  /api/audit/stats
 POST /api/audit        { "action": "clear" }
+GET  /api/approvals
+POST /api/approvals    { "id": "...", "action": "approve" }
 GET  /api/permissions
 POST /api/permissions  { "tool": "write_file", "mode": "manual" }
 ```

@@ -39,4 +39,9 @@ test("records, filters, and summarizes tool executions", async (t) => {
   assert.equal(stats.success, 1);
   assert.equal(stats.failure, 1);
   assert.equal(stats.averageDurationMs, 10);
+
+  const exported = await log.export("csv");
+  assert.equal(exported.format, "csv");
+  assert.match(exported.content, /timestamp,tool,mode/);
+  assert.match(exported.content, /write_file/);
 });

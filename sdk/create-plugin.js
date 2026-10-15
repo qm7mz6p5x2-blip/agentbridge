@@ -29,6 +29,11 @@ function buildPluginFiles(options) {
     requiredEngineVersion: "^0.2.0",
     tools: [toolName],
     kind: "tool",
+    permissions: {
+      filesystem: true,
+      network: false,
+      child_process: false,
+    },
   };
 
   const index = `module.exports = function register(api) {

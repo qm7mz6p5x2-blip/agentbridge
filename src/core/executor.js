@@ -209,7 +209,7 @@ async function executeSingleTool(toolCall, session) {
 }
 
 // 确认执行 — 调用 /api/confirm 端点重新执行被拦截的工具
-async function executeConfirmedTool(toolName, args) {
+async function executeConfirmedTool(toolName, args, approvalId, remember) {
   // 修复：输入验证（安全）
   if (!toolName || typeof toolName !== 'string') {
     return { success: false, error: '无效的工具名称' };
@@ -225,7 +225,13 @@ async function executeConfirmedTool(toolName, args) {
   try {
     var response = await fetch(DS_CONFIG.serverUrl + '/api/confirm', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tool: toolName, args: args }), signal: ctrl.signal
+      body: JSON.stringify({
+        tool: toolName,
+        args: args,
+        approvalId: approvalId || '',
+        remember: remember === true
+      }),
+      signal: ctrl.signal
     });
     clearTimeout(timer);
     timer = null;

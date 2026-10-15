@@ -1,0 +1,15 @@
+{
+  "id": "workflow-tools",
+  "name": "Workflow Tools",
+  "version": "1.0.0",
+  "description": "任务和工作流工具",
+  "entry": "index.js",
+  "requiredEngineVersion": "^0.1.0",
+  "tools": ["task_create", "task_list", "task_done", "data_convert"],
+  "kind": "tool",
+  "permissions": {
+    "filesystem": true,
+    "network": false,
+    "child_process": false
+  }
+}

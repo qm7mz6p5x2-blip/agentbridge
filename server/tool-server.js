@@ -49,6 +49,7 @@ const { registerPluginManagerTools } = require('./plugin-tools');
 const { handleFeishuMessages, handleFeishuReply } = require('./feishu');
 const { createAuditLog } = require('./audit-log');
 const { createPermissionPolicy } = require('./permission-policy');
+const { createApprovalQueue } = require('./approval-queue');
 
 // ============================================================
 // 全局实例
@@ -56,6 +57,7 @@ const { createPermissionPolicy } = require('./permission-policy');
 const toolRegistry = new ToolRegistry(WORKSPACE_DIR);
 const auditLog = createAuditLog(WORKSPACE_DIR);
 const permissionPolicy = createPermissionPolicy(path.join(CONFIG_DIR, 'permissions.json'));
+const approvalQueue = createApprovalQueue(WORKSPACE_DIR);
 const pluginRegistry = new PluginRegistry(toolRegistry, {
   workspaceDir: WORKSPACE_DIR,
   engineVersion: ENGINE_VERSION,
@@ -298,8 +300,22 @@ var server = http.createServer(async function(req, res) {
             result = { success: false, error: '缺少 tool 或 args 参数' };
           } else {
             try {
+              if (body.approvalId) {
+                await approvalQueue.approve(body.approvalId, { remember: body.remember === true });
+                if (body.remember === true) {
+                  await permissionPolicy.setToolMode(body.tool, 'auto');
+                }
+              }
               const confirmResult = await toolRegistry.executeToolConfirmed(body.tool, body.args, { toolCallId: 'confirm_' + Date.now() });
               result = unwrapToolResult(confirmResult);
+              await auditLog.append({
+                tool: body.tool,
+                args: body.args,
+                mode: body.remember === true ? 'auto' : 'manual',
+                approvalId: body.approvalId || '',
+                success: result && result.success !== false && !result.blocked,
+                error: result && result.error ? result.error : ''
+              });
             } catch (e) {
               result = { success: false, error: e.message };
             }
@@ -312,15 +328,22 @@ var server = http.createServer(async function(req, res) {
 
         case '/api/audit':
           if (req.method === 'GET') {
-            result = {
-              success: true,
-              entries: await auditLog.list({
-                limit: body.limit,
-                tool: body.tool,
-                success: body.success === undefined ? undefined : body.success === 'true'
-              }),
-              stats: await auditLog.stats()
-            };
+            if (body.format === 'csv' || body.format === 'json') {
+              result = { success: true, export: await auditLog.export(body.format) };
+            } else {
+              result = {
+                success: true,
+                entries: await auditLog.list({
+                  limit: body.limit,
+                  tool: body.tool,
+                  success: body.success === undefined || body.success === '' ? undefined : body.success === 'true',
+                  from: body.from,
+                  to: body.to,
+                  query: body.query
+                }),
+                stats: await auditLog.stats()
+              };
+            }
           } else if (body.action === 'clear') {
             await auditLog.clear();
             result = { success: true, message: '审计日志已清空' };
@@ -331,6 +354,24 @@ var server = http.createServer(async function(req, res) {
 
         case '/api/audit/stats':
           result = { success: true, stats: await auditLog.stats() };
+          break;
+
+        case '/api/approvals':
+          if (req.method === 'GET') {
+            result = {
+              success: true,
+              approvals: await approvalQueue.list({
+                status: body.status || '',
+                limit: body.limit
+              }),
+              stats: await approvalQueue.stats()
+            };
+          } else if (body.action === 'clear') {
+            await approvalQueue.clear();
+            result = { success: true, message: '审批队列已清空' };
+          } else {
+            result = await handleApprovalDecision(body);
+          }
           break;
 
         case '/api/permissions':
@@ -472,10 +513,21 @@ async function executeToolHttp(toolName, args, opts) {
     confirmed: opts.confirmed === true
   });
   if (!permission.allowed) {
+    var approval = null;
+    if (permission.needsConfirmation) {
+      approval = await approvalQueue.create({
+        tool: toolName,
+        args: args,
+        mode: permission.mode,
+        toolCallId: opts.toolCallId,
+        reason: permission.reason
+      });
+    }
     const blockedResult = {
       success: true,
       blocked: true,
       needsConfirmation: permission.needsConfirmation,
+      approvalId: approval ? approval.id : '',
       reason: permission.reason,
       tool: toolName,
       mode: permission.mode
@@ -486,6 +538,7 @@ async function executeToolHttp(toolName, args, opts) {
       mode: permission.mode,
       success: false,
       durationMs: Date.now() - startedAt,
+      approvalId: approval ? approval.id : '',
       error: permission.reason
     });
     return blockedResult;
@@ -590,6 +643,49 @@ async function handlePermissionUpdate(body) {
   }
 }
 
+async function handleApprovalDecision(body) {
+  try {
+    if (!body.id) return { success: false, error: '缺少审批 id' };
+    const action = body.action || 'approve';
+    const entry = await approvalQueue.get(body.id);
+    if (!entry) return { success: false, error: '审批请求不存在' };
+
+    if (action === 'deny') {
+      const denied = await approvalQueue.deny(body.id, body.reason);
+      await auditLog.append({
+        tool: denied.tool,
+        args: denied.args,
+        mode: denied.mode,
+        approvalId: denied.id,
+        success: false,
+        error: body.reason || '用户拒绝执行'
+      });
+      return { success: true, approval: denied };
+    }
+
+    const approved = await approvalQueue.approve(body.id, { remember: body.remember === true });
+    if (body.remember === true) {
+      await permissionPolicy.setToolMode(approved.tool, 'auto');
+    }
+    const result = unwrapToolResult(await toolRegistry.executeToolConfirmed(
+      approved.tool,
+      approved.args,
+      { toolCallId: 'approval_' + approved.id }
+    ));
+    await auditLog.append({
+      tool: approved.tool,
+      args: approved.args,
+      mode: body.remember === true ? 'auto' : 'manual',
+      approvalId: approved.id,
+      success: result && result.success !== false && !result.blocked,
+      error: result && result.error ? result.error : ''
+    });
+    return { success: true, approval: approved, result: result };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+}
+
 // 【修复】请求体最大 10MB，防止内存耗尽攻击
 // 【修复】请求体接收超时 30 秒，防止慢速客户端挂起
 function parseBody(req) {
@@ -638,6 +734,7 @@ function parseQuery(req) {
 // ============================================================
 ensureDirectories().then(async function() {
   await permissionPolicy.load();
+  await approvalQueue.load();
   await loadPlugins();
   registerPluginManagerTools(toolRegistry, pluginRegistry, { pluginsDir: PLUGINS_DIR });
   registerSkillManagerTools(toolRegistry, skills);
@@ -670,6 +767,7 @@ ensureDirectories().then(async function() {
     console.log('             /api/tools (list/execute)');
     console.log('             /api/plugins (list/reload)');
     console.log('             /api/audit (execution history)');
+    console.log('             /api/approvals (approval queue)');
     console.log('             /api/permissions (tool permission policy)');
     console.log('             /api/read|write|list|exec|append|search|file-info (legacy compat)');
     console.log('             /api/agent/* (personality/memory/skills/tools/quick-actions)');
