@@ -11,6 +11,7 @@
 - Add audit filtering and CSV export.
 - Add tests for audit logs, permission policy, and plugin scaffolding.
 - Add architecture documentation for the Model plus Harness design.
+- Add a demo and recording guide for GitHub and interviews.
 - Move native messaging identity to `com.agentbridge.native`.
 - Add GitHub Actions syntax checks and tests.
 

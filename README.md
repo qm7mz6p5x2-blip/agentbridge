@@ -195,6 +195,7 @@ workspace/skills/           技能目录
 ```
 
 更完整的组件、权限和调用链说明见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。
+演示步骤和录屏脚本见 [docs/DEMO.md](docs/DEMO.md)。
 
 ## 安全说明
 
