@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<style>
+/* ============================================================
+   Design Tokens — Light (默认) · 与 Spotlight 面板统一
+   ============================================================ */
+:root {
+  color-scheme: light;
+  /* 表面 */
+  --ds-bg:            #FFFFFF;
+  --ds-surface:       #FFFFFF;
+  --ds-surface-2:     #F7F7F8;
+  --ds-surface-3:     #EFEFF2;
+  --ds-inset:         #F4F4F6;
+
+  /* 文本 */
+  --ds-text:          #17171B;
+  --ds-text-2:        #52525B;
+  --ds-text-3:        #8E8E98;
+  --ds-text-faint:    #B4B4BC;
+
+  /* 线框 */
+  --ds-border:        rgba(23,23,28,0.10);
+  --ds-border-strong: rgba(23,23,28,0.16);
+
+  /* 强调：靛蓝 */
+  --ds-accent:        #4B3FE3;
+  --ds-accent-strong: #3C2ECA;
+  --ds-accent-soft:   #EEECFE;
+  --ds-accent-text:   #3C2ECA;
+  --ds-on-accent:     #FFFFFF;
+
+  /* 语义色 */
+  --ds-success:       #0F9D6E;
+  --ds-success-soft:  #E5F6F0;
+  --ds-warn:          #C77417;
+  --ds-warn-soft:     #FBF0E1;
+  --ds-error:         #D9403A;
+  --ds-error-soft:    #FCEAE9;
+  --ds-info:          #2468D6;
+  --ds-info-soft:     #EAF1FC;
+
+  /* 阴影 */
+  --ds-shadow-1: 0 1px 2px rgba(23,23,28,0.06);
+  --ds-shadow-2: 0 2px 8px rgba(23,23,28,0.08);
+  --ds-shadow-3: 0 6px 20px rgba(23,23,28,0.10);
+  --ds-shadow-4: 0 18px 50px -12px rgba(20,20,40,0.18), 0 4px 14px -4px rgba(20,20,40,0.08);
+
+  /* 圆角 */
+  --ds-radius-sm: 7px;
+  --ds-radius-md: 11px;
+  --ds-radius-lg: 15px;
+  --ds-radius-full: 999px;
+
+  /* 字体 */
+  --ds-font: "SF Pro Text", "PingFang SC", -apple-system, "Segoe UI", "Microsoft YaHei UI", system-ui, sans-serif;
+  --ds-font-mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", "Consolas", monospace;
+
+  /* 字号 */
+  --ds-fs-xs: 11px;
+  --ds-fs-sm: 12px;
+  --ds-fs-base: 13px;
+  --ds-fs-lg: 15px;
+  --ds-fs-xl: 19px;
+
+  /* 动效 */
+  --ds-ease: 0.14s ease;
+  --ds-ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+/* ============================================================
+   Dark — 跟随系统
+   ============================================================ */
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --ds-bg:            #151519;
+    --ds-surface:       #1D1D23;
+    --ds-surface-2:     #26262D;
+    --ds-surface-3:     #2E2E36;
+    --ds-inset:         #1A1A1F;
+
+    --ds-text:          #ECECEF;
+    --ds-text-2:        #A1A1AA;
+    --ds-text-3:        #6E6E78;
+    --ds-text-faint:    #55555E;
+
+    --ds-border:        rgba(255,255,255,0.09);
+    --ds-border-strong: rgba(255,255,255,0.16);
+
+    --ds-accent:        #6A5FF0;
+    --ds-accent-strong: #8A80FF;
+    --ds-accent-soft:   #282353;
+    --ds-accent-text:   #CFD8FF;
+    --ds-on-accent:     #FFFFFF;
+
+    --ds-success:       #2BD59A;
+    --ds-success-soft:  #123F33;
+    --ds-warn:          #E8A23D;
+    --ds-warn-soft:     #3A2E15;
+    --ds-error:         #F2706B;
+    --ds-error-soft:    #3D2120;
+    --ds-info:          #5C9DF6;
+    --ds-info-soft:     #16293D;
+
+    --ds-shadow-1: 0 1px 2px rgba(0,0,0,0.4);
+    --ds-shadow-2: 0 2px 8px rgba(0,0,0,0.45);
+    --ds-shadow-3: 0 6px 20px rgba(0,0,0,0.5);
+    --ds-shadow-4: 0 18px 50px -12px rgba(0,0,0,0.6), 0 4px 14px -4px rgba(0,0,0,0.4);
+  }
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  width: 400px;
+  min-height: 480px;
+  background: var(--ds-surface);
+  color: var(--ds-text);
+  font-family: var(--ds-font);
+  font-size: var(--ds-fs-base);
+  overflow: hidden;
+  letter-spacing: -0.01em;
+}
+
+/* ===== Scrollbar ===== */
+::-webkit-scrollbar { width: 9px; height: 9px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--ds-border-strong); border-radius: var(--ds-radius-full);
+  border: 2px solid transparent; background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover { background-color: var(--ds-accent); background-clip: content-box; }
+
+/* ===== Header ===== */
+#pm-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 13px 16px 11px;
+  background: var(--ds-surface);
+  border-bottom: 1px solid var(--ds-border);
+  flex-shrink: 0;
+}
+.pm-header-brand {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.pm-header-logo {
+  font-weight: 800;
+  font-size: var(--ds-fs-lg);
+  color: var(--ds-accent);
+  letter-spacing: -0.02em;
+}
+.pm-header-title {
+  font-weight: 600;
+  font-size: var(--ds-fs-base);
+  color: var(--ds-text);
+}
+.pm-header-ver {
+  font-size: var(--ds-fs-xs);
+  color: var(--ds-text-3);
+  font-weight: 450;
+  font-family: var(--ds-font-mono);
+}
+.pm-close-btn {
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: var(--ds-radius-sm);
+  background: none;
+  cursor: pointer;
+  font-size: 15px;
+  color: var(--ds-text-3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--ds-ease);
+}
+.pm-close-btn:hover {
+  background: var(--ds-error-soft);
+  color: var(--ds-error);
+}
+
+/* ===== Body ===== */
+#pm-body {
+  display: flex;
+  min-height: 420px;
+}
+
+/* ===== Sidebar ===== */
+#pm-sidebar {
+  width: 56px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 6px;
+  background: var(--ds-surface-2);
+  border-right: 1px solid var(--ds-border);
+  flex-shrink: 0;
+}
+.pm-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 8px 2px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: var(--ds-font);
+  font-size: 8.5px;
+  font-weight: 550;
+  color: var(--ds-text-3);
+  letter-spacing: 0.2px;
+  text-transform: uppercase;
+  border-radius: var(--ds-radius-md);
+  transition: all var(--ds-ease);
+}
+.pm-nav-item:hover {
+  background: var(--ds-surface);
+  color: var(--ds-text-2);
+}
+.pm-nav-item.active {
+  color: var(--ds-accent-text);
+  background: var(--ds-accent-soft);
+  font-weight: 650;
+}
+.pm-nav-icon {
+  font-size: 16px;
+  line-height: 1;
+}
+.pm-nav-label {
+  font-size: 8.5px;
+  letter-spacing: 0.4px;
+}
+.pm-nav-divider {
+  height: 1px;
+  background: var(--ds-border);
+  margin: 5px 6px;
+}
+
+/* ===== Content ===== */
+#pm-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px;
+}
+.pm-page { display: none; }
+.pm-page.active { display: block; }
+
+/* Section headers */
+.pm-section {
+  margin-bottom: 22px;
+}
+.pm-section:last-child {
+  margin-bottom: 0;
+}
+.pm-section-title {
+  font-size: var(--ds-fs-xs);
+  font-weight: 700;
+  color: var(--ds-text-3);
+  margin-bottom: 10px;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+
+/* ===== Status Row ===== */
+.pm-status-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--ds-surface-2);
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-md);
+}
+.pm-status-badge {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--ds-text-faint);
+  transition: all 0.3s;
+}
+.pm-status-badge.checking {
+  animation: pulse-check 1.2s ease-in-out infinite;
+  background: var(--ds-accent);
+}
+.pm-status-badge.running {
+  background: var(--ds-success);
+  box-shadow: 0 0 8px var(--ds-success-soft);
+}
+.pm-status-badge.stopped {
+  background: var(--ds-error);
+  box-shadow: 0 0 8px var(--ds-error-soft);
+}
+@keyframes pulse-check {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 1; }
+}
+.pm-status-info { flex: 1; min-width: 0; }
+.pm-status-label {
+  font-size: var(--ds-fs-base);
+  font-weight: 600;
+  color: var(--ds-text);
+}
+.pm-status-detail {
+  font-size: var(--ds-fs-xs);
+  color: var(--ds-text-2);
+  margin-top: 1px;
+}
+.pm-btn-icon {
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: var(--ds-radius-sm);
+  background: none;
+  cursor: pointer;
+  font-size: 15px;
+  color: var(--ds-text-3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--ds-ease);
+  flex-shrink: 0;
+}
+.pm-btn-icon:hover {
+  background: var(--ds-surface-3);
+  color: var(--ds-text);
+}
+
+/* ===== Buttons ===== */
+.pm-btn-group {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.pm-btn-group .pm-btn {
+  flex: 1;
+  min-width: 0;
+}
+.pm-btn {
+  padding: 7px 14px;
+  border: 1px solid var(--ds-border);
+  font-size: var(--ds-fs-sm);
+  font-weight: 550;
+  cursor: pointer;
+  font-family: var(--ds-font);
+  border-radius: var(--ds-radius-sm);
+  transition: all var(--ds-ease);
+  background: var(--ds-surface);
+  color: var(--ds-text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  letter-spacing: -0.01em;
+}
+.pm-btn:hover {
+  background: var(--ds-surface-2);
+  border-color: var(--ds-border-strong);
+}
+.pm-btn:active {
+  background: var(--ds-surface-3);
+}
+.pm-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.pm-btn-primary {
+  background: var(--ds-accent);
+  color: var(--ds-on-accent);
+  border-color: var(--ds-accent);
+  font-weight: 600;
+}
+.pm-btn-primary:hover {
+  background: var(--ds-accent-strong);
+  border-color: var(--ds-accent-strong);
+  color: var(--ds-on-accent);
+}
+.pm-btn-secondary {
+  background: var(--ds-surface);
+  color: var(--ds-accent-text);
+  border-color: var(--ds-accent);
+}
+.pm-btn-secondary:hover {
+  background: var(--ds-accent-soft);
+}
+.pm-btn-danger {
+  color: var(--ds-error);
+  border-color: color-mix(in srgb, var(--ds-error) 40%, transparent);
+  background: var(--ds-error-soft);
+}
+.pm-btn-danger:hover {
+  border-color: var(--ds-error);
+  background: color-mix(in srgb, var(--ds-error) 16%, transparent);
+}
+.pm-btn-sm {
+  padding: 4px 10px;
+  font-size: var(--ds-fs-xs);
+}
+.pm-btn-block {
+  display: block;
+  width: 100%;
+  text-align: center;
+  margin-bottom: 7px;
+}
+.pm-btn-block:last-child {
+  margin-bottom: 0;
+}
+
+/* ===== Form ===== */
+.pm-form-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+  gap: 10px;
+}
+.pm-form-row:last-child { margin-bottom: 0; }
+.pm-form-row-label {
+  width: 64px;
+  font-size: var(--ds-fs-xs);
+  color: var(--ds-text-2);
+  flex-shrink: 0;
+  font-weight: 550;
+}
+.pm-form-row-fill {
+  flex: 1;
+  min-width: 0;
+}
+.pm-input {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid var(--ds-border);
+  background: var(--ds-inset);
+  color: var(--ds-text);
+  font-size: var(--ds-fs-sm);
+  font-family: var(--ds-font);
+  outline: none;
+  border-radius: var(--ds-radius-sm);
+  transition: border-color var(--ds-ease), box-shadow var(--ds-ease), background var(--ds-ease);
+}
+.pm-input:focus {
+  border-color: var(--ds-accent);
+  background: var(--ds-surface);
+  box-shadow: 0 0 0 3px var(--ds-accent-soft);
+}
+.pm-select { cursor: pointer; }
+
+/* ===== Toggle ===== */
+.pm-toggle-track {
+  width: 34px;
+  height: 20px;
+  border-radius: var(--ds-radius-full);
+  background: var(--ds-surface-3);
+  border: 1px solid var(--ds-border-strong);
+  position: relative;
+  cursor: pointer;
+  transition: background 0.18s ease;
+  display: inline-block;
+  vertical-align: middle;
+}
+.pm-toggle-track.on {
+  background: var(--ds-accent);
+  border-color: var(--ds-accent);
+}
+.pm-toggle-track::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  background: var(--ds-on-accent);
+  border-radius: 50%;
+  transition: transform 0.18s var(--ds-ease-out);
+  box-shadow: var(--ds-shadow-1);
+}
+.pm-toggle-track.on::after {
+  transform: translateX(14px);
+}
+
+/* ===== Status Badge ===== */
+.pm-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: var(--ds-radius-full);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+.pm-badge-on  { color: var(--ds-success); background: var(--ds-success-soft); }
+.pm-badge-off { color: var(--ds-text-3); background: var(--ds-surface-3); }
+
+/* ===== Log ===== */
+#pm-log-filter-tabs {
+  display: flex;
+  gap: 3px;
+  margin-bottom: 10px;
+}
+.pm-log-tab {
+  padding: 4px 11px;
+  border: 1px solid transparent;
+  background: none;
+  font-size: var(--ds-fs-xs);
+  font-weight: 550;
+  color: var(--ds-text-3);
+  cursor: pointer;
+  border-radius: var(--ds-radius-full);
+  font-family: var(--ds-font);
+  transition: all var(--ds-ease);
+}
+.pm-log-tab:hover {
+  background: var(--ds-surface-2);
+  color: var(--ds-text);
+}
+.pm-log-tab.active {
+  background: var(--ds-surface-3);
+  color: var(--ds-text);
+  font-weight: 650;
+  border-color: var(--ds-border);
+}
+.pm-log-box {
+  max-height: 210px;
+  overflow-y: auto;
+  padding: 8px 10px;
+  background: var(--ds-inset);
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-md);
+  font-family: var(--ds-font-mono);
+  font-size: var(--ds-fs-xs);
+  line-height: 1.6;
+  min-height: 40px;
+}
+.pm-log-line {
+  padding: 2px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--ds-border) 60%, transparent);
+}
+.pm-log-line:last-child { border-bottom: none; }
+.pm-log-line span {
+  color: var(--ds-text-faint);
+  margin-right: 5px;
+}
+.pm-log-line.success { color: var(--ds-success); }
+.pm-log-line.error   { color: var(--ds-error); }
+.pm-log-line.info    { color: var(--ds-text-2); }
+
+/* ===== Log Preview ===== */
+#pm-log-preview {
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 8px 10px;
+  background: var(--ds-inset);
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-md);
+  font-family: var(--ds-font-mono);
+  font-size: var(--ds-fs-xs);
+  line-height: 1.6;
+}
+
+/* ===== Toast ===== */
+#pm-toast {
+  position: fixed;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  padding: 8px 18px;
+  font-size: var(--ds-fs-xs);
+  font-family: var(--ds-font);
+  font-weight: 500;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  pointer-events: none;
+  background: var(--ds-text);
+  color: var(--ds-surface);
+  border-radius: var(--ds-radius-full);
+  box-shadow: var(--ds-shadow-2);
+}
+#pm-toast.show { opacity: 1; }
+
+/* ===== Modal ===== */
+.pm-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15,15,20,0.32);
+  z-index: 200;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+.pm-modal-overlay.show {
+  display: flex;
+  padding: 20px;
+}
+.pm-modal {
+  background: var(--ds-surface);
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-lg);
+  padding: 22px;
+  width: 370px;
+  max-height: 65vh;
+  overflow-y: auto;
+  box-shadow: var(--ds-shadow-4);
+  z-index: 1;
+  color: var(--ds-text);
+}
+.pm-modal-title {
+  font-size: var(--ds-fs-lg);
+  font-weight: 650;
+  margin-bottom: 16px;
+  color: var(--ds-text);
+}
+.pm-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+/* ===== Progress bar ===== */
+.pm-progress {
+  display: none;
+  height: 3px;
+  background: var(--ds-surface-3);
+  border-radius: 2px;
+  margin-top: 10px;
+  overflow: hidden;
+}
+.pm-progress.show { display: block; }
+.pm-progress-bar {
+  height: 100%;
+  width: 0%;
+  background: var(--ds-accent);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+/* ===== Start status ===== */
+#pm-start-status {
+  font-size: var(--ds-fs-sm);
+  color: var(--ds-text-2);
+  min-height: 18px;
+  margin-top: 7px;
+}
+
+/* ===== Help box ===== */
+.pm-help-box {
+  padding: 10px 12px;
+  background: var(--ds-surface-2);
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-md);
+  margin-top: 8px;
+}
+.pm-help-title {
+  font-weight: 650;
+  font-size: var(--ds-fs-base);
+  margin-bottom: 8px;
+  color: var(--ds-text);
+}
+.pm-help-method {
+  font-size: var(--ds-fs-xs);
+  color: var(--ds-text-2);
+  margin-top: 6px;
+}
+.pm-help-method b {
+  color: var(--ds-text);
+}
+.pm-help-cmd {
+  font-family: var(--ds-font-mono);
+  font-size: var(--ds-fs-xs);
+  color: var(--ds-accent-text);
+  margin: 3px 0 3px 10px;
+  word-break: break-all;
+  background: var(--ds-inset);
+  padding: 3px 6px;
+  border-radius: var(--ds-radius-sm);
+}
+.pm-help-desc {
+  font-size: var(--ds-fs-xs);
+  color: var(--ds-text-2);
+  margin: 2px 0 2px 14px;
+  line-height: 1.5;
+}
+.pm-help-note {
+  font-size: var(--ds-fs-xs);
+  color: var(--ds-text-2);
+  margin-top: 10px;
+  padding: 8px 10px;
+  background: var(--ds-inset);
+  border-radius: var(--ds-radius-sm);
+  line-height: 1.6;
+}
+.pm-btn-copy {
+  margin: 5px 0 0 10px;
+  padding: 3px 10px;
+  font-size: var(--ds-fs-xs);
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-sm);
+  cursor: pointer;
+  background: var(--ds-surface);
+  color: var(--ds-text);
+  font-family: var(--ds-font);
+  transition: all var(--ds-ease);
+}
+.pm-btn-copy:hover {
+  border-color: var(--ds-accent);
+  background: var(--ds-accent-soft);
+}
+
+/* ===== Empty state ===== */
+.pm-empty {
+  text-align: center;
+  padding: 24px;
+  color: var(--ds-text-faint);
+  font-size: var(--ds-fs-xs);
+}
+
+/* ===== Preview section ===== */
+#pm-appearance-preview {
+  padding: 14px;
+  background: var(--ds-surface-2);
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-md);
+}
+
+/* ===== Utilities ===== */
+.hidden { display: none !important; }
+.pm-ver { font-size: var(--ds-fs-xs); color: var(--ds-text-3); }
+
+/* ===== About ===== */
+.pm-about-hero {
+  text-align: center;
+  padding: 28px 0 20px;
+}
+.pm-about-logo {
+  font-size: 36px;
+  font-weight: 800;
+  color: var(--ds-accent);
+  margin-bottom: 6px;
+  letter-spacing: -0.03em;
+}
+.pm-about-name {
+  font-size: var(--ds-fs-lg);
+  font-weight: 650;
+}
+.pm-about-version {
+  font-size: var(--ds-fs-xs);
+  color: var(--ds-text-3);
+  margin-top: 2px;
+  font-family: var(--ds-font-mono);
+}
+.pm-about-desc {
+  font-size: var(--ds-fs-sm);
+  color: var(--ds-text-2);
+  line-height: 1.65;
+}
+
+/* ===== Reduced Motion ===== */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div id="pm-header">
+  <div class="pm-header-brand">
+    <span class="pm-header-logo">[AI]</span>
+    <span class="pm-header-title">Tool Agent</span>
+    <span class="pm-header-ver" id="pm-version">v3.0</span>
+  </div>
+  <button class="pm-close-btn" id="pm-btn-close" title="关闭">&times;</button>
+</div>
+
+<!-- Body -->
+<div id="pm-body">
+  <!-- Sidebar -->
+  <nav id="pm-sidebar">
+    <button class="pm-nav-item active" data-page="connection"><span class="pm-nav-icon">&#8962;</span><span class="pm-nav-label">连接</span></button>
+    <button class="pm-nav-item" data-page="quickactions"><span class="pm-nav-icon">&#9889;</span><span class="pm-nav-label">快捷</span></button>
+    <button class="pm-nav-item" data-page="logs"><span class="pm-nav-icon">&#9776;</span><span class="pm-nav-label">日志</span></button>
+    <div class="pm-nav-divider"></div>
+    <button class="pm-nav-item" data-page="appearance"><span class="pm-nav-icon">&#9673;</span><span class="pm-nav-label">外观</span></button>
+    <button class="pm-nav-item" data-page="data"><span class="pm-nav-icon">&#9681;</span><span class="pm-nav-label">数据</span></button>
+    <button class="pm-nav-item" data-page="about"><span class="pm-nav-icon">&#9432;</span><span class="pm-nav-label">关于</span></button>
+  </nav>
+
+  <!-- Content -->
+  <main id="pm-content">
+
+    <!-- ===== CONNECTION ===== -->
+    <div class="pm-page active" id="pm-page-connection">
+      <div class="pm-section">
+        <div class="pm-section-title">服务状态</div>
+        <div class="pm-status-row">
+          <span class="pm-status-badge" id="pm-status-badge"></span>
+          <div class="pm-status-info">
+            <div class="pm-status-label" id="pm-status-text">检测中...</div>
+            <div class="pm-status-detail" id="pm-status-detail"></div>
+          </div>
+          <button class="pm-btn-icon" id="pm-btn-refresh-status" title="刷新">&#x21bb;</button>
+        </div>
+      </div>
+
+      <div class="pm-section">
+        <div class="pm-section-title">服务控制</div>
+        <div class="pm-btn-group">
+          <button class="pm-btn pm-btn-primary" id="pm-btn-start-server">&#9654; 启动服务</button>
+          <button class="pm-btn pm-btn-secondary" id="pm-btn-restart-server">&#x21bb; 重启</button>
+          <button class="pm-btn pm-btn-danger" id="pm-btn-stop-server">&#9724; 停止</button>
+        </div>
+        <div id="pm-start-progress" class="pm-progress">
+          <div id="pm-start-progress-bar" class="pm-progress-bar" style="width:0%"></div>
+        </div>
+        <div id="pm-start-status"></div>
+      </div>
+
+      <div class="pm-section">
+        <div class="pm-section-title">启动日志</div>
+        <div id="pm-log" class="pm-log-box"></div>
+      </div>
+    </div>
+
+    <!-- ===== QUICK ACTIONS ===== -->
+    <div class="pm-page" id="pm-page-quickactions">
+      <div class="pm-section">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <span class="pm-section-title" style="margin-bottom:0;">快捷操作 (最多5个)</span>
+          <div style="display:flex;gap:4px;">
+            <button class="pm-btn pm-btn-sm" id="pm-btn-add-qa">+ 添加</button>
+            <button class="pm-btn pm-btn-sm" id="pm-btn-import-preset">导入预设</button>
+          </div>
+        </div>
+        <div id="pm-qa-list"></div>
+      </div>
+    </div>
+
+    <!-- ===== LOGS ===== -->
+    <div class="pm-page" id="pm-page-logs">
+      <div class="pm-section">
+        <div class="pm-section-title">日志预览</div>
+        <div id="pm-log-filter-tabs">
+          <button class="pm-log-tab active" data-level="all">全部</button>
+          <button class="pm-log-tab" data-level="info">Info</button>
+          <button class="pm-log-tab" data-level="warn">Warn</button>
+          <button class="pm-log-tab" data-level="error">Error</button>
+        </div>
+        <div id="pm-log-preview"><div class="pm-empty">暂无日志</div></div>
+      </div>
+      <div class="pm-section">
+        <div class="pm-form-row">
+          <label class="pm-form-row-label">最大条数</label>
+          <div class="pm-form-row-fill"><input class="pm-input" id="pm-max-logs" type="number" min="50" max="2000" value="500" /></div>
+        </div>
+        <div class="pm-form-row">
+          <label class="pm-form-row-label">桌面通知</label>
+          <div class="pm-form-row-fill"><div class="pm-toggle-track" id="pm-toggle-notif"></div></div>
+        </div>
+      </div>
+      <div class="pm-section">
+        <button class="pm-btn pm-btn-block" id="pm-btn-export-logs">&#8615; 导出日志</button>
+        <button class="pm-btn pm-btn-block pm-btn-danger" id="pm-btn-clear-logs">清除所有日志</button>
+      </div>
+    </div>
+
+    <!-- ===== APPEARANCE ===== -->
+    <div class="pm-page" id="pm-page-appearance">
+      <div class="pm-section">
+        <div class="pm-section-title">主题设置</div>
+        <div class="pm-form-row">
+          <label class="pm-form-row-label">主题</label>
+          <div class="pm-form-row-fill">
+            <select class="pm-input pm-select" id="pm-theme">
+              <option value="light">浅色</option>
+              <option value="dark">深色</option>
+              <option value="auto">跟随系统</option>
+            </select>
+          </div>
+        </div>
+        <div class="pm-form-row">
+          <label class="pm-form-row-label">面板位置</label>
+          <div class="pm-form-row-fill">
+            <select class="pm-input pm-select" id="pm-panel-pos">
+              <option value="br">右下角</option>
+              <option value="bl">左下角</option>
+              <option value="tr">右上角</option>
+              <option value="tl">左上角</option>
+            </select>
+          </div>
+        </div>
+        <div class="pm-form-row">
+          <label class="pm-form-row-label">可拖拽</label>
+          <div class="pm-form-row-fill"><div class="pm-toggle-track on" id="pm-toggle-drag"></div></div>
+        </div>
+        <div class="pm-form-row">
+          <label class="pm-form-row-label">字体大小</label>
+          <div class="pm-form-row-fill"><input class="pm-input" id="pm-font-size" type="number" min="11" max="18" value="13" /></div>
+        </div>
+      </div>
+      <div class="pm-section">
+        <div class="pm-section-title">预览</div>
+        <div id="pm-appearance-preview"></div>
+      </div>
+    </div>
+
+    <!-- ===== DATA ===== -->
+    <div class="pm-page" id="pm-page-data">
+      <div class="pm-section">
+        <div class="pm-section-title">备份与恢复</div>
+        <button class="pm-btn pm-btn-block" id="pm-btn-export-config">&#8615; 导出配置 (JSON)</button>
+        <button class="pm-btn pm-btn-block" id="pm-btn-import-config">&#8614; 导入配置 (JSON)</button>
+        <input type="file" id="pm-file-import" accept=".json" style="display:none" />
+      </div>
+      <div class="pm-section">
+        <div class="pm-section-title">危险操作</div>
+        <button class="pm-btn pm-btn-block" id="pm-btn-reset-default">恢复默认设置</button>
+        <button class="pm-btn pm-btn-block pm-btn-danger" id="pm-btn-clear-all">清除所有数据</button>
+      </div>
+    </div>
+
+    <!-- ===== ABOUT ===== -->
+    <div class="pm-page" id="pm-page-about">
+      <div class="pm-about-hero">
+        <div class="pm-about-logo">[AI]</div>
+        <div class="pm-about-name">AgentBridge</div>
+        <div class="pm-about-version">v3.0.0 &middot; Chrome MV3 &middot; Multi-Platform</div>
+      </div>
+      <div class="pm-section">
+        <div class="pm-section-title">描述</div>
+        <p class="pm-about-desc">为 AI 网页版添加本地工具调用能力。支持 DeepSeek、ChatGPT、Kimi、通义千问、智谱ChatGLM、豆包等平台。支持提示注入、自动检测、工具执行和结果注入。</p>
+      </div>
+      <div class="pm-section">
+        <button class="pm-btn pm-btn-block" id="pm-btn-diagnose">&#9878; 运行诊断</button>
+        <button class="pm-btn pm-btn-block" id="pm-btn-open-github">&#8599; GitHub 仓库</button>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Toast -->
+<div id="pm-toast"></div>
+
+<!-- Modal -->
+<div class="pm-modal-overlay" id="pm-modal-overlay">
+  <div class="pm-modal" id="pm-modal-content"></div>
+</div>
+
+<script src="popup.js"></script>
+</body>
+</html>

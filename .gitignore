@@ -1,0 +1,13 @@
+node_modules/
+runtime/
+server/logs/
+workspace/memory/
+workspace/sessions/
+screenshots/
+.env
+.env.*
+*.log
+*.tmp
+*.bak
+.DS_Store
+Thumbs.db

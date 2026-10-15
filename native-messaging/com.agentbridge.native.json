@@ -1,0 +1,11 @@
+{
+    "name": "com.agentbridge.native",
+    "description": "AgentBridge - Native Messaging Host",
+    "path": "node.exe",
+    "type": "stdio",
+    "allowed_origins": [
+    ],
+    "args": [
+        "native-messaging/native-host.js"
+    ]
+}

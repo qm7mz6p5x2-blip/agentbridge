@@ -1,0 +1,29 @@
+{
+  "enabled_skills": [
+    {
+      "name": "code-review",
+      "enabled": true
+    },
+    {
+      "name": "dev/code-review",
+      "enabled": true
+    },
+    {
+      "name": "office/docx",
+      "enabled": true
+    },
+    {
+      "name": "office/pdf",
+      "enabled": true
+    },
+    {
+      "name": "office/pptx",
+      "enabled": true
+    },
+    {
+      "name": "skill-creator",
+      "enabled": true
+    }
+  ],
+  "custom_skills": []
+}

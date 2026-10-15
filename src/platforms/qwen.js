@@ -1,0 +1,186 @@
+/**
+ * 通义千问 平台适配器
+ */
+(function() {
+  // 国内版 data.messages 是累积文本，需转成增量（delta）供拦截器拼接。
+  // 拦截器改为增量模式（cumulativeContent:false），所有返回内容统一为增量，
+  // 避免累积模式与增量 fallback 字段（text/content/delta）混用时增量内容被丢弃。
+  var _qwenLastLen = 0;
+  function deltaOf(text) {
+    if (typeof text !== 'string' || text.length === 0) return null;
+    if (text.length >= _qwenLastLen) {
+      var d = text.substring(_qwenLastLen);
+      _qwenLastLen = text.length;
+      return d;
+    }
+    // 内容变短 = 新流开始，重置并返回完整文本
+    _qwenLastLen = text.length;
+    return text;
+  }
+
+  var qwenAdapter = {
+    id: 'qwen',
+    name: '通义千问',
+    hostPattern: /tongyi\.aliyun\.com|qianwen\.aliyun\.com|qianwen\.com/,
+
+    sse: {
+      apiPattern: /chat\/completions|\/api\/v[12]\/chat\/completion|chat2-api\.qianwen\.com\/api\/v\d\/chat/,
+
+      extractContent: function(chunk) {
+        if (!chunk) return null;
+        // OpenAI 兼容格式: choices[0].delta.content (增量)
+        if (chunk.choices && chunk.choices.length > 0) {
+          var delta = chunk.choices[0].delta;
+          if (delta && delta.content) return delta.content;
+        }
+        // 国内版: data.messages[].content (累积文本，转增量)
+        if (chunk.data && chunk.data.messages) {
+          var msgs = chunk.data.messages;
+          if (msgs.length > 0 && msgs[msgs.length-1].content) {
+            return deltaOf(msgs[msgs.length-1].content);
+          }
+        }
+        // 备选字段（增量）
+        if (chunk.text) return chunk.text;
+        if (chunk.content) return chunk.content;
+        if (chunk.delta) return chunk.delta;
+        return null;
+      },
+
+      detectStreamEnd: function(chunk) {
+        if (!chunk) return null;
+        if (chunk.choices && chunk.choices.length > 0) {
+          var fr = chunk.choices[0].finish_reason;
+          if (fr) {
+            _qwenLastLen = 0; // 流结束重置累积长度，供下一流 deltaOf 使用
+            return fr;
+          }
+        }
+        return null;
+      },
+
+      detectEventClose: function(eventType, chunk) {
+        return null;
+      },
+
+      binaryStream: false,
+      // 所有返回内容统一为增量，由拦截器拼接
+      cumulativeContent: false
+    },
+
+    dom: {
+      chatInputSelectors: [
+        'div[contenteditable="true"][role="textbox"]',
+        'div[contenteditable="true"][placeholder*="千问"]',
+        'div[contenteditable="true"][placeholder*="通义"]',
+        'div[contenteditable="true"]',
+        'textarea[placeholder*="千问"]',
+        'textarea[placeholder*="通义"]',
+        'textarea',
+        '[role="textbox"]'
+      ],
+
+      findSendButton: function() {
+        // 通义千问：class含 cursor-not-allowed 表示禁用状态，输入后才可点击
+        var btns = document.querySelectorAll('button');
+        // 优先找含 svg 且在输入框附近的 button
+        var input = document.querySelector('div[contenteditable="true"][role="textbox"]');
+        if (input) {
+          var walk = input.parentElement;
+          for (var k = 0; k < 5; k++) {
+            if (!walk) break;
+            var btns2 = walk.querySelectorAll('button');
+            for (var j = 0; j < btns2.length; j++) {
+              var b = btns2[j];
+              if (b.clientHeight > 0 && b.querySelector('svg')) {
+                b.setAttribute('data-ds-send-btn', 'qwen-send');
+                return b;
+              }
+            }
+            walk = walk.parentElement;
+          }
+        }
+        // 备选：所有 button 中有 svg 的
+        for (var i = 0; i < btns.length; i++) {
+          var b = btns[i];
+          if (b.clientHeight > 0 && b.querySelector('svg') && b.getAttribute('type') !== 'button') {
+            return b;
+          }
+        }
+        return null;
+      },
+
+      aiMessageSelectors: [
+        'div[class*="text-assistant"]',
+        'div[class*="assistant-message"]',
+        'div[class*="markdown-body"]',
+        'div[class*="message-content"]',
+        'div[class*="markdown"]',
+        'div[class*="answer"]',
+        'div[class*="response"]'
+      ],
+      thinkContentSelector: '[class*="think-content"], [class*="thinking-content"]',
+      userMessageSelector: '[class*="user-message"], [class*="human-message"], [class*="text-user"]',
+
+      isUserMessage: function(el) {
+        if (el.getAttribute('data-role') === 'user') return true;
+        if (el.getAttribute('data-author') === 'user') return true;
+        var cls = (el.className || '');
+        if (typeof cls === 'string') {
+          if (cls.indexOf('user-message') >= 0 || cls.indexOf('human-message') >= 0) return true;
+          if (cls.indexOf('text-user') >= 0) return true;
+          if (cls.indexOf('assistant') >= 0 || cls.indexOf('bot') >= 0 || cls.indexOf('ai') >= 0) return false;
+        }
+        return false;
+      },
+
+      detectStreaming: function() {
+        var stopBtn = document.querySelector('button[aria-label*="stop" i], button[aria-label*="停止" i], [class*="stop-button"]');
+        if (stopBtn && stopBtn.clientHeight > 0) return true;
+        // 通义千问：输入框附近有 disabled 的发送按钮表示正在流式
+        var input = document.querySelector('div[contenteditable="true"][role="textbox"]');
+        if (input) {
+          var walk = input.parentElement;
+          for (var k = 0; k < 5; k++) {
+            if (!walk) break;
+            var btn = walk.querySelector('button[disabled], button.cursor-not-allowed');
+            if (btn && btn.querySelector('svg')) return true;
+            walk = walk.parentElement;
+          }
+        }
+        return false;
+      }
+    },
+
+    setInputValue: function(element, value) {
+      // 通义千问使用 contenteditable div
+      element.focus();
+      // 先全选并删除
+      document.execCommand('selectAll', false, null);
+      document.execCommand('delete', false, null);
+      // execCommand('insertText') 对长文本可能静默失败
+      var ok = document.execCommand('insertText', false, value);
+      // fallback: 手动构建 DOM 节点
+      if (!ok || !element.textContent || element.textContent.trim() === '') {
+        element.innerHTML = '';
+        var lines = value.split('\n');
+        for (var i = 0; i < lines.length; i++) {
+          if (i > 0) element.appendChild(document.createElement('br'));
+          element.appendChild(document.createTextNode(lines[i]));
+        }
+        element.dispatchEvent(new InputEvent('input', { bubbles: true, cancelable: true, inputType: 'insertText', data: value }));
+        element.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    },
+
+    sendMessage: function() {
+      var btn = this.dom.findSendButton();
+      if (btn && !btn.disabled) { btn.click(); return true; }
+      // fallback: Enter
+      var input = typeof findChatInput === 'function' ? findChatInput() : null;
+      return PlatformAdapter.sendMessageFallback(input);
+    }
+  };
+
+  PlatformRegistry.register(qwenAdapter);
+})();

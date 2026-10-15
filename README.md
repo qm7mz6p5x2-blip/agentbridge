@@ -1,0 +1,154 @@
+# AgentBridge
+
+AgentBridge 是一个面向网页版大模型的本地工具执行与 Agent 循环框架。它让模型可以基于对话输出结构化的工具调用，由浏览器扩展解析后发送到本地 Node.js 服务端执行，再把结果自动回填给模型，形成多步任务闭环。
+
+本项目是基于 [AI Tool Agent](https://github.com/lsy2009/ai-tool-agent) 修改的衍生版本，原项目采用 MIT License。原始版权与许可证声明已保留。
+
+## 核心能力
+
+- 浏览器扩展：支持 Microsoft Edge 和 Chrome 的 Manifest V3。
+- 本地工具服务：Node.js 服务监听 `localhost:3004`，统一执行工具。
+- 工具调用解析：把模型输出的 `<tool_call>` 转换为结构化对象。
+- 结果回填：把执行结果包装为 `<tool_response>` 自动发送回对话。
+- Agent Loop：支持多步工具链、最大步数、调用去重和连续失败熔断。
+- 工具注册：统一管理内置工具、插件工具和 MCP 工具。
+- 安全控制：路径检查、危险命令拦截、敏感操作确认和参数净化。
+- 插件扩展：扫描 `workspace/plugins` 并注册插件提供的工具。
+- 本地优先：默认运行在用户电脑上，不依赖云端执行环境。
+
+## 架构
+
+```text
+Edge/Chrome Extension
+        |
+        v
+Service Worker / Executor
+        |
+        v
+POST http://localhost:3004/exec
+        |
+        v
+ToolRegistry
+  |-- built-in tools
+  |-- plugin tools
+  `-- MCP tools
+        |
+        v
+workspace files and approved local commands
+```
+
+## 快速开始
+
+### 1. 安装依赖
+
+需要 Node.js 18 或更高版本。
+
+```powershell
+npm install
+```
+
+### 2. 启动本地服务
+
+```powershell
+npm run launcher
+```
+
+也可以双击：
+
+```text
+start-server.bat
+```
+
+服务启动后监听：
+
+```text
+http://localhost:3004
+```
+
+### 3. 加载浏览器扩展
+
+Microsoft Edge：
+
+```text
+edge://extensions
+```
+
+Google Chrome：
+
+```text
+chrome://extensions
+```
+
+打开开发者模式，选择“加载解压缩的扩展”，然后选择本仓库根目录。
+
+首次加载后，在 `edge://extensions` 或 `chrome://extensions` 中复制扩展 ID，并启动服务前设置：
+
+```powershell
+$env:AGENTBRIDGE_EXTENSION_IDS="你的扩展ID"
+npm run launcher
+```
+
+多个扩展 ID 可以用逗号分隔。不要把本机扩展 ID 提交到仓库。
+
+### 4. 在 DeepSeek 中启用工具
+
+1. 打开支持的工具页面。
+2. 按 `Ctrl+Shift+D` 打开快捷面板。
+3. 点击“一键启动（工具+记忆）”。
+4. 等待工具提示词注入完成。
+5. 发送需要访问本地文件或执行工具的任务。
+
+## 当前验证结果
+
+在 Microsoft Edge 和 DeepSeek 网页版中，已经验证以下链路：
+
+```text
+AI 输出工具调用
+  -> 扩展解析
+  -> POST /exec
+  -> ToolRegistry 执行
+  -> 返回 JSON
+  -> 结果回填
+  -> AI 继续回答
+```
+
+当前服务端注册 52 个工具，加载 8 个插件。
+
+## 项目结构
+
+```text
+manifest.json                浏览器扩展清单
+src/                         扩展源码
+  core/                      解析器、执行器、循环控制
+  monitor/                   对话状态监控和结果回填
+  platforms/                 AI 平台适配器
+  ui/                        扩展面板
+server/                      本地 Node.js 服务端
+workspace/plugins/          插件目录
+workspace/skills/           技能目录
+```
+
+## 安全说明
+
+AgentBridge 可以执行本地文件和命令操作。请只在了解风险的情况下授权工具调用，并保持工作区权限最小化。
+
+本项目通过注入脚本与第三方 AI 平台交互，可能受到对应平台服务条款约束。使用者需要自行评估和承担相关风险。
+
+## 来源与致谢
+
+AgentBridge 基于以下原项目修改：
+
+- [AI Tool Agent](https://github.com/lsy2009/ai-tool-agent)
+- 原始版权：Copyright (c) 2025 lsy200409
+
+原项目的 MIT License 完整保留在 [LICENSE](LICENSE) 中，修改说明见 [NOTICE](NOTICE)。
+
+原项目 README 中提到的参考项目包括：
+
+- [openclaw-zero-token](https://github.com/linuxhsj/openclaw-zero-token)
+- [DeepSeek++](https://github.com/zhu1090093659/deepseek-pp)
+- [CLI-Anything](https://github.com/HKUDS/CLI-Anything)
+
+## 许可证
+
+MIT License。原项目版权和许可证声明必须保留。
